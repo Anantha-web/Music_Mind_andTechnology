@@ -1,0 +1,77 @@
+addpath('/MATLAB Drive/MIRtoolbox1.8.2 (1)/MIRtoolbox1.8.2/MIRToolbox/');
+
+% Read the audio file
+[y, Fs] = audioread('michael_jackson.mp3');
+
+% Convert stereo to mono by averaging the channels
+y_mono = mean(y, 2); % Take the mean along the columns (stereo channels)
+
+% Calculate the Short-Time Fourier Transform (STFT)
+window_length = 1024;  % Length of the window for STFT
+hop_size = 512;  % Hop size for STFT
+nfft = 1024;  % Number of FFT points
+[S, F, T] = spectrogram(y_mono, window_length, window_length - hop_size, nfft, Fs);
+
+% Calculate the magnitude spectrum
+magnitude_spectrum = abs(S);
+
+% Apply smoothing to estimate the spectral envelope (e.g., using a moving average)
+smoothed_spectrum = movmean(magnitude_spectrum, 20, 2);  % Moving average along the frequency axis
+
+% Calculate the logarithm of frequency
+log_F = log10(F);
+
+% Check for NaN or infinite values
+has_nan = any(isnan(T(:))) || any(isnan(log_F(:))) || any(isnan(smoothed_spectrum(:)));
+has_inf = any(isinf(T(:))) || any(isinf(log_F(:))) || any(isinf(smoothed_spectrum(:)));
+
+% Handle NaN or infinite values
+if has_nan
+    T(isnan(T)) = 0;  % Replace NaN values with zero
+    log_F(isnan(log_F)) = 0;
+    smoothed_spectrum(isnan(smoothed_spectrum)) = 0;
+end
+if has_inf
+    T(isinf(T)) = 0;  % Replace infinite values with zero
+    log_F(isinf(log_F)) = 0;
+    smoothed_spectrum(isinf(smoothed_spectrum)) = 0;
+end
+
+% Plot the spectral envelope coefficients against the logarithm of frequency
+figure;
+imagesc(T, log_F, 10*log10(smoothed_spectrum));
+axis xy;  % Set y-axis direction to normal
+xlabel('Time (s)');
+ylabel('Logarithm of Frequency (log Hz)');
+title('Spectral Envelope of "michael_jackson.wav"');
+colorbar;  % Add color bar for magnitude scale
+
+or (note keep only code while running)
+
+
+% Add the MIRtoolbox folder to the MATLAB path
+addpath('/MATLAB Drive/MIRtoolbox1.8.2 (1)/MIRtoolbox1.8.2/MIRToolbox/');
+
+% Define the filenames of the music files
+music_files = {'michael_jackson.mp3', 'dream_theater.mp3', 'mozart.mp3', 'queen.mp3', 'taylor_swft.mp3'};
+
+% Iterate over each music file
+for i = 1:length(music_files)
+    % Read the audio data using miraudio command
+    audio_data = miraudio(music_files{i});
+    
+    % Estimate the tempo of the music file
+    tempo = mirtempo(audio_data);
+    
+    % Extract the tempo value
+    tempo_value = mirgetdata(tempo);
+    
+    % Display the tempo
+    disp(['Tempo of ', music_files{i}, ': ', num2str(tempo_value), ' BPM']);
+    
+    % Play the excerpt using mirplay command
+    mirplay(music_files{i});
+    
+    % Pause to allow time to adjust the speed of the metronome manually
+    input('Adjust the metronome speed to match the tempo, then press Enter to continue...');
+end
